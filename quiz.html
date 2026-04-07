@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Practice Quiz</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            text-align: center;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 520px;
+            margin: 60px auto;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+        }
+
+        button {
+            margin: 8px;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background: gray;
+            cursor: not-allowed;
+        }
+
+        .answers {
+            text-align: left;
+            margin-top: 15px;
+        }
+
+        .hidden { display: none; }
+
+        .correct { color: green; }
+        .wrong { color: red; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- START -->
+    <div id="startScreen">
+        <h1>Practice Quiz</h1>
+        <p>Choose a level:</p>
+
+        <button onclick="startQuiz('easy')">Easy</button>
+        <button id="mediumBtn" onclick="startQuiz('medium')">Medium 🔒</button>
+        <button id="hardBtn" onclick="startQuiz('hard')">Hard 🔒</button>
+    </div>
+
+    <!-- QUIZ -->
+    <div id="quizScreen" class="hidden">
+        <div id="progress"></div>
+        <h3 id="questionText"></h3>
+        <div id="answers" class="answers"></div>
+
+        <button onclick="prevQuestion()">Back</button>
+        <button onclick="nextQuestion()">Next</button>
+
+        <div id="result"></div>
+        <div id="review"></div>
+
+        <button id="restartBtn" class="hidden" onclick="restartQuiz()">Restart</button>
+    </div>
+
+</div>
+
+<script>
+let currentLevel = "";
+let currentQuestion = 0;
+let userAnswers = [];
+
+let unlocked = JSON.parse(localStorage.getItem("quizUnlock")) || {
+    medium: false,
+    hard: false
+};
+
+const quizData = {
+    easy: [
+        {q:"What does HTML stand for?",
+         options:["Hyper Text Markup Language","Home Tool Markup Language","Hyperlinks Text Mark"],
+         answer:0},
+
+        {q:"Which tag is a paragraph?",
+         options:["<p>","<para>","<text>"],
+         answer:0},
+
+        {q:"Which tag is the biggest heading?",
+         options:["<h1>","<h6>","<head>"],
+         answer:0},
+
+        {q:"Which tag adds a line break?",
+         options:["<br>","<lb>","<break>"],
+         answer:0}
+    ],
+
+    medium: [
+        {q:"Which tag creates a link?",
+         options:["<a>","<link>","<href>"],
+         answer:0},
+
+        {q:"Where does the page title go?",
+         options:["<title>","<body>","<meta>"],
+         answer:0},
+
+        {q:"Which tag shows an image?",
+         options:["<img>","<image>","<pic>"],
+         answer:0},
+
+        {q:"Which tag makes text bold?",
+         options:["<b>","<bold>","<stronger>"],
+         answer:0}
+    ],
+
+    hard: [
+        {q:"Which tag creates a list item?",
+         options:["<li>","<ul>","<list>"],
+         answer:0},
+
+        {q:"Which tag creates a table row?",
+         options:["<tr>","<td>","<table>"],
+         answer:0},
+
+        {q:"Which tag contains metadata?",
+         options:["<head>","<body>","<footer>"],
+         answer:0},
+
+        {q:"Which attribute specifies a link URL?",
+         options:["href","src","link"],
+         answer:0}
+    ]
+};
+
+updateLocks();
+
+function updateLocks() {
+    if (unlocked.medium) {
+        document.getElementById("mediumBtn").disabled = false;
+        document.getElementById("mediumBtn").innerText = "Medium";
+    } else {
+        document.getElementById("mediumBtn").disabled = true;
+    }
+
+    if (unlocked.hard) {
+        document.getElementById("hardBtn").disabled = false;
+        document.getElementById("hardBtn").innerText = "Hard";
+    } else {
+        document.getElementById("hardBtn").disabled = true;
+    }
+}
+
+function startQuiz(level) {
+    currentLevel = level;
+    currentQuestion = 0;
+    userAnswers = [];
+
+    document.getElementById("startScreen").classList.add("hidden");
+    document.getElementById("quizScreen").classList.remove("hidden");
+
+    showQuestion();
+}
+
+function showQuestion() {
+    let q = quizData[currentLevel][currentQuestion];
+
+    document.getElementById("progress").innerText =
+        "Question " + (currentQuestion + 1) + " / " + quizData[currentLevel].length;
+
+    document.getElementById("questionText").innerText = q.q;
+
+    let answersDiv = document.getElementById("answers");
+    answersDiv.innerHTML = "";
+
+    q.options.forEach((opt, i) => {
+        let label = document.createElement("label");
+
+        let input = document.createElement("input");
+        input.type = "radio";
+        input.name = "answer";
+        input.value = i;
+
+        if (userAnswers[currentQuestion] === i) {
+            input.checked = true;
+        }
+
+        label.appendChild(input);
+        label.append(" " + opt);
+
+        answersDiv.appendChild(label);
+        answersDiv.appendChild(document.createElement("br"));
+    });
+}
+
+function nextQuestion() {
+    let selected = document.querySelector('input[name="answer"]:checked');
+
+    if (!selected) {
+        alert("Pick an answer!");
+        return;
+    }
+
+    userAnswers[currentQuestion] = parseInt(selected.value);
+    currentQuestion++;
+
+    if (currentQuestion < quizData[currentLevel].length) {
+        showQuestion();
+    } else {
+        finishQuiz();
+    }
+}
+
+function prevQuestion() {
+    if (currentQuestion > 0) {
+        currentQuestion--;
+        showQuestion();
+    }
+}
+
+function finishQuiz() {
+    let score = 0;
+
+    quizData[currentLevel].forEach((q, i) => {
+        if (userAnswers[i] === q.answer) score++;
+    });
+
+    let percent = Math.round((score / quizData[currentLevel].length) * 100);
+
+    let grade = "F";
+    if (percent >= 90) grade = "A";
+    else if (percent >= 80) grade = "B";
+    else if (percent >= 70) grade = "C";
+    else if (percent >= 60) grade = "D";
+
+    document.getElementById("questionText").innerHTML = "";
+    document.getElementById("answers").innerHTML = "";
+    document.getElementById("progress").innerHTML = "";
+
+    document.getElementById("result").innerHTML =
+        `🎉 Score: ${score}/${quizData[currentLevel].length}<br>
+         📊 ${percent}% — Grade: ${grade}`;
+
+    // Unlock logic
+    if (currentLevel === "easy" && percent >= 70) {
+        unlocked.medium = true;
+    }
+    if (currentLevel === "medium" && percent >= 70) {
+        unlocked.hard = true;
+    }
+
+    localStorage.setItem("quizUnlock", JSON.stringify(unlocked));
+    updateLocks();
+
+    // Review answers
+    let reviewHTML = "<h3>Review:</h3>";
+    quizData[currentLevel].forEach((q, i) => {
+        let correct = q.options[q.answer];
+        let user = q.options[userAnswers[i]];
+
+        reviewHTML += `
+            <p>
+            ${i+1}. ${q.q}<br>
+            Your answer: <span class="${user === correct ? 'correct' : 'wrong'}">${user}</span><br>
+            Correct: <span class="correct">${correct}</span>
+            </p>
+        `;
+    });
+
+    document.getElementById("review").innerHTML = reviewHTML;
+
+    document.getElementById("restartBtn").classList.remove("hidden");
+}
+
+function restartQuiz() {
+    document.getElementById("quizScreen").classList.add("hidden");
+    document.getElementById("startScreen").classList.remove("hidden");
+
+    document.getElementById("result").innerHTML = "";
+    document.getElementById("review").innerHTML = "";
+}
+</script>
+
+</body>
+</html>
